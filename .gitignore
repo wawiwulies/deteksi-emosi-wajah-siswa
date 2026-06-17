@@ -1,0 +1,16 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Data training dan file kerja lokal tidak perlu ikut deploy.
+fer2013.csv
+train_fixed_model.py
+ui_check_screens/
+
+# Hanya model final yang dipakai aplikasi.
+models/*
+!models/facial_emotion_cnn_retrained.keras
+
