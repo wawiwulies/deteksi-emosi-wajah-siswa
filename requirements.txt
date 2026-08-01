@@ -3,4 +3,4 @@ reportlab
 Pillow
 numpy
 tensorflow
-opencv-python-headless
+opencv-python-headless<5.0.0
