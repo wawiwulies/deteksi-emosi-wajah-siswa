@@ -7,7 +7,7 @@ Aplikasi web Streamlit untuk mendeteksi emosi wajah siswa menggunakan model CNN 
 - Input langsung dari kamera perangkat menggunakan `st.camera_input()`.
 - Deteksi wajah menggunakan OpenCV Haar Cascade.
 - Preprocessing wajah ke grayscale 48x48, normalisasi 0-1, dan reshape ke `(1, 48, 48, 1)`.
-- Prediksi 7 kelas emosi FER2013.
+- Prediksi 7 kelas emosi berdasarkan dataset siswa SLB Kota Madiun dan FER2013.
 - Tampilan gambar asli, area wajah terdeteksi, hasil emosi, confidence, grafik probabilitas, dan saran singkat.
 - Fallback loader untuk file weights yang cocok dengan arsitektur CNN yang disediakan.
 
