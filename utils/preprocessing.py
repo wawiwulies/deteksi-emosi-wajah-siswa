@@ -1,4 +1,7 @@
 import cv2
+
+cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+face_cascade = cv2.CascadeClassifier(cascade_path)
 import numpy as np
 from PIL import Image
 
