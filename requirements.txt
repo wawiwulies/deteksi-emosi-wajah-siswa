@@ -1,0 +1,6 @@
+streamlit
+reportlab
+Pillow
+numpy
+tensorflow
+opencv-python-headless
