@@ -5,6 +5,98 @@ from pathlib import Path
 import streamlit as st
 from PIL import Image
 
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import tempfile
+import os
+
+def generate_pdf_report(emotion_label, confidence, suggestion, image_array):
+    # Buat file sementara untuk PDF
+    fd_pdf, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd_pdf)
+    
+    # Buat file sementara untuk menyimpan gambar dari numpy array
+    fd_img, temp_img_path = tempfile.mkstemp(suffix=".png")
+    os.close(fd_img)
+    
+    # Simpan array gambar (dari kamera) menjadi file PNG
+    img = Image.fromarray(image_array)
+    img.save(temp_img_path, format="PNG")
+    
+    c = canvas.Canvas(temp_pdf_path, pagesize=letter)
+    width, height = letter
+    
+    # Header Dokumen
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(50, height - 50, "Laporan Hasil Deteksi Emosi Wajah")
+    
+    c.setFont("Helvetica", 10)
+    c.setFillColorRGB(0.4, 0.4, 0.4)
+    c.drawString(50, height - 70, "Dibuat oleh Aplikasi Deteksi Emosi CNN - Streamlit")
+    
+    # Garis Pembatas
+    c.setStrokeColorRGB(0.8, 0.8, 0.8)
+    c.line(50, height - 85, width - 50, height - 85)
+    
+    # Menambahkan Gambar ke PDF
+    # Hitung rasio gambar agar tidak peyang
+    img_width, img_height = img.size
+    aspect = img_height / float(img_width)
+    draw_width = 250
+    draw_height = draw_width * aspect
+    
+    # Tentukan posisi Y untuk gambar (di bawah garis pembatas)
+    y_img_position = height - 110 - draw_height
+    c.drawImage(temp_img_path, 50, y_img_position, width=draw_width, height=draw_height)
+    
+    # Sesuaikan posisi teks agar berada di bawah gambar
+    text_y_start = y_img_position - 40
+    
+    # Isi Hasil Deteksi
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColorRGB(0.1, 0.1, 0.1)
+    c.drawString(50, text_y_start, f"Emosi Terdeteksi: {emotion_label}")
+    
+    c.setFont("Helvetica", 12)
+    c.drawString(50, text_y_start - 30, f"Tingkat Keyakinan: {confidence * 100:.1f}%")
+    
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, text_y_start - 70, "Saran / Tindak Lanjut:")
+    
+    # Text wrapping sederhana untuk saran
+    text_object = c.beginText(50, text_y_start - 90)
+    text_object.setFont("Helvetica", 11)
+    text_object.setLeading(16)
+    
+    max_line_length = 80
+    words = suggestion.split()
+    current_line = ""
+    for word in words:
+        if len(current_line + " " + word) <= max_line_length:
+            current_line += (" " + word) if current_line else word
+        else:
+            text_object.textLine(current_line)
+            current_line = word
+    if current_line:
+        text_object.textLine(current_line)
+        
+    c.drawText(text_object)
+    
+    # Footer
+    c.setFont("Helvetica-Oblique", 9)
+    c.setFillColorRGB(0.5, 0.5, 0.5)
+    c.drawString(50, 50, "Dokumen ini digenerate secara otomatis oleh sistem.")
+    
+    c.save()
+    
+    # Bersihkan file gambar sementara karena sudah masuk ke PDF
+    try:
+        os.remove(temp_img_path)
+    except OSError:
+        pass
+        
+    return temp_pdf_path
+
 from utils.model_loader import (
     list_model_candidates,
     list_notebook_candidates,
@@ -1262,6 +1354,16 @@ def process_image(image_file, model):
             """,
             unsafe_allow_html=True,
         )
+        pdf_path = generate_pdf_report(display_label, confidence, suggestion, boxed_image)
+        with open(pdf_path, "rb") as pdf_file:
+            st.download_button(
+                label="📥 Download Hasil (PDF)",
+                data=pdf_file,
+                file_name="hasil_deteksi_emosi.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        # Hapus file sementara setelah dibaca Streamlit jika ingin lebih bersih (opsional)
         if is_low_confidence:
             st.markdown(
                 """
