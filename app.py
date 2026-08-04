@@ -10,7 +10,7 @@ from reportlab.pdfgen import canvas
 import tempfile
 import os
 
-def generate_pdf_report(emotion_label, confidence, suggestion, image_array):
+def generate_pdf_report(emotion_label, confidence, suggestion, image_array, probabilities):
     # Buat file sementara untuk PDF
     fd_pdf, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd_pdf)
@@ -71,16 +71,65 @@ def generate_pdf_report(emotion_label, confidence, suggestion, image_array):
     max_line_length = 80
     words = suggestion.split()
     current_line = ""
+    line_count = 0  # Tambahan: untuk melacak jumlah baris saran agar Y-axis akurat
+    
     for word in words:
         if len(current_line + " " + word) <= max_line_length:
             current_line += (" " + word) if current_line else word
         else:
             text_object.textLine(current_line)
             current_line = word
+            line_count += 1
+            
     if current_line:
         text_object.textLine(current_line)
+        line_count += 1
         
     c.drawText(text_object)
+    
+    # --- SELIPAN CODING BARU: PROBABILITAS SEMUA KELAS ---
+    
+    # Hitung posisi Y baru di bawah teks saran
+    y_prob_start = text_y_start - 90 - (line_count * 16) - 30
+    
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColorRGB(0.1, 0.1, 0.1)
+    c.drawString(50, y_prob_start, "Probabilitas Semua Kelas:")
+    
+    y_current = y_prob_start - 25
+    c.setFont("Helvetica", 10)
+    
+    try:
+        from utils.preprocessing import EMOTION_LABELS, EMOTION_LABELS_ID
+        
+        for index, value in enumerate(probabilities):
+            label = EMOTION_LABELS_ID[EMOTION_LABELS[index]]
+            percent = float(value) * 100
+            
+            # Tulis Label Kelas
+            c.setFillColorRGB(0.1, 0.1, 0.1)
+            c.drawString(50, y_current, label)
+            
+            # Gambar Base Bar (Background abu-abu/biru muda)
+            c.setFillColorRGB(0.85, 0.92, 0.98) 
+            c.rect(140, y_current - 2, 200, 10, fill=1, stroke=0)
+            
+            # Gambar Fill Bar (Warna Biru Progress)
+            c.setFillColorRGB(0.23, 0.51, 0.96)
+            fill_width = 200 * (percent / 100)
+            if fill_width > 0:
+                c.rect(140, y_current - 2, fill_width, 10, fill=1, stroke=0)
+                
+            # Tulis Teks Persentase
+            c.setFillColorRGB(0.1, 0.1, 0.1)
+            c.drawString(350, y_current, f"{percent:.1f}%")
+            
+            y_current -= 20 # Jarak antar baris probabilitas
+            
+    except Exception as e:
+        c.drawString(50, y_current, "(Gagal memuat detail probabilitas)")
+        
+    # --- AKHIR SELIPAN CODING BARU ---
     
     # Footer
     c.setFont("Helvetica-Oblique", 9)
@@ -1354,7 +1403,7 @@ def process_image(image_file, model):
             """,
             unsafe_allow_html=True,
         )
-        pdf_path = generate_pdf_report(display_label, confidence, suggestion, boxed_image)
+        pdf_path = generate_pdf_report(display_label, confidence, suggestion, boxed_image, probabilities)
         with open(pdf_path, "rb") as pdf_file:
             st.download_button(
                 label="📥 Download Hasil (PDF)",
